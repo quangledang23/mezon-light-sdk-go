@@ -11,7 +11,7 @@ import (
 
 	"github.com/gorilla/websocket"
 
-	"github.com/mezonai/mezon-light-sdk-go/proto"
+	"github.com/quangledang23/mezon-light-sdk-go/proto"
 )
 
 // Default socket timeouts, mirroring DefaultSocket in socket.gen.ts.

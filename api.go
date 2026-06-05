@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mezonai/mezon-light-sdk-go/proto"
+	"github.com/quangledang23/mezon-light-sdk-go/proto"
 )
 
 // MezonApi is a low-level HTTP client for the Mezon gateway, the Go

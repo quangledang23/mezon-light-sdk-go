@@ -1,4 +1,4 @@
-module github.com/mezonai/mezon-light-sdk-go
+module github.com/quangledang23/mezon-light-sdk-go
 
 go 1.22
 

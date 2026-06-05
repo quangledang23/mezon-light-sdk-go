@@ -16,7 +16,7 @@ TypeScript package [`mezon-light-sdk`](../mezon-light-sdk).
 ## Installation
 
 ```sh
-go get github.com/mezonai/mezon-light-sdk-go
+go get github.com/quangledang23/mezon-light-sdk-go
 ```
 
 ## Quick start
@@ -28,7 +28,7 @@ import (
 	"context"
 	"log"
 
-	mezonlight "github.com/mezonai/mezon-light-sdk-go"
+	mezonlight "github.com/quangledang23/mezon-light-sdk-go"
 )
 
 func main() {

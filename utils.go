@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"strings"
 
-	"github.com/mezonai/mezon-light-sdk-go/proto"
+	"github.com/quangledang23/mezon-light-sdk-go/proto"
 )
 
 // SafeJSONParse decodes raw JSON content. On failure (or for empty input) it

@@ -1,7 +1,7 @@
 package mezonlight
 
 import (
-	"github.com/mezonai/mezon-light-sdk-go/proto"
+	"github.com/quangledang23/mezon-light-sdk-go/proto"
 )
 
 // Aliases re-exporting the wire-level types used in the public API, mirroring
