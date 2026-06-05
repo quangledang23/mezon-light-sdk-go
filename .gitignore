@@ -36,3 +36,6 @@ dist/
 # OS
 .DS_Store
 Thumbs.db
+
+# Local smoke test with real credentials — never commit
+smoketest/

@@ -129,6 +129,66 @@ func Authenticate(ctx context.Context, config AuthenticateConfig) (*LightClient,
 	}, nil
 }
 
+// AuthenticateBot authenticates a bot (app) with its bot ID and API key from
+// the Mezon developer portal, mirroring SessionManager.authenticate in the
+// TypeScript mezon-sdk.
+func AuthenticateBot(ctx context.Context, config AuthenticateBotConfig) (*LightClient, error) {
+	if config.BotID == "" || config.APIKey == "" {
+		return nil, &AuthenticationError{Message: "missing required fields: BotID and APIKey are required"}
+	}
+	gatewayURL := config.GatewayURL
+	if gatewayURL == "" {
+		gatewayURL = MezonGWURL
+	}
+
+	basePath, err := parseBaseURL(gatewayURL)
+	if err != nil {
+		return nil, &AuthenticationError{Message: "invalid gateway URL: " + err.Error()}
+	}
+	// The API key doubles as the basic-auth username for session refreshes.
+	client := NewMezonApi(config.APIKey, 7*time.Second, basePath)
+
+	apiSession, err := client.AuthenticateApp(ctx, config.APIKey, "", &ApiAuthenticateAppRequest{
+		Account: ApiAppAccount{AppID: config.BotID, Token: config.APIKey},
+	})
+	if err != nil {
+		return nil, err
+	}
+	if apiSession.Token == "" || apiSession.RefreshToken == "" {
+		return nil, &AuthenticationError{Message: "invalid authentication response: missing tokens"}
+	}
+
+	apiURL := apiSession.APIURL
+	if apiURL == "" {
+		apiURL = gatewayURL
+	}
+	wsURL := apiSession.WsURL
+	if wsURL == "" {
+		wsURL = MezonWSHost
+	}
+
+	session, err := RestoreSession(apiSession.Token, apiSession.RefreshToken, apiURL, wsURL, true)
+	if err != nil {
+		return nil, err
+	}
+	apiBase, err := parseBaseURL(apiURL)
+	if err != nil {
+		return nil, &AuthenticationError{Message: "invalid api_url in authentication response: " + err.Error()}
+	}
+	client.SetBasePath(apiBase)
+
+	userID := apiSession.UserID
+	if userID == "" || userID == "0" {
+		userID = session.UserID // fall back to the JWT uid claim
+	}
+
+	return &LightClient{
+		session: session,
+		client:  client,
+		userID:  userID,
+	}, nil
+}
+
 // UserID returns the current user ID.
 func (c *LightClient) UserID() string { return c.userID }
 

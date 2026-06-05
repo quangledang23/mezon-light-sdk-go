@@ -394,6 +394,8 @@ type Session struct {
 	IsRemember   bool   `json:"is_remember,omitempty"`
 	APIURL       string `json:"api_url,omitempty"`
 	IDToken      string `json:"id_token,omitempty"`
+	WsURL        string `json:"ws_url,omitempty"`
+	SessionID    string `json:"session_id,omitempty"`
 }
 
 func (m *Session) Marshal() []byte { return m.MarshalAppend(nil) }
@@ -406,6 +408,8 @@ func (m *Session) MarshalAppend(b []byte) []byte {
 	b = appendBool(b, 5, m.IsRemember)
 	b = appendString(b, 6, m.APIURL)
 	b = appendString(b, 7, m.IDToken)
+	b = appendString(b, 8, m.WsURL)
+	b = appendString(b, 9, m.SessionID)
 	return b
 }
 
@@ -431,6 +435,10 @@ func (m *Session) Unmarshal(b []byte) error {
 			m.APIURL = d.str()
 		case num == 7 && typ == protowire.BytesType:
 			m.IDToken = d.str()
+		case num == 8 && typ == protowire.BytesType:
+			m.WsURL = d.str()
+		case num == 9 && typ == protowire.BytesType:
+			m.SessionID = d.str()
 		default:
 			d.skip(num, typ)
 		}

@@ -61,6 +61,30 @@ type SendMessagePayload struct {
 	Code int32
 }
 
+// AuthenticateBotConfig configures authentication of a bot (app) using the
+// bot ID and API key from the Mezon developer portal.
+type AuthenticateBotConfig struct {
+	// BotID is the application/bot ID.
+	BotID string `json:"bot_id"`
+	// APIKey is the bot token from the developer portal.
+	APIKey string `json:"api_key"`
+	// GatewayURL is a custom gateway URL (optional, uses MezonGWURL if empty).
+	GatewayURL string `json:"gateway_url,omitempty"`
+}
+
+// ApiAppAccount identifies a bot/app in an authentication request.
+type ApiAppAccount struct {
+	// AppID is the application/bot ID.
+	AppID string `json:"appid"`
+	// Token is the bot API key.
+	Token string `json:"token"`
+}
+
+// ApiAuthenticateAppRequest is the request body for bot/app authentication.
+type ApiAuthenticateAppRequest struct {
+	Account ApiAppAccount `json:"account"`
+}
+
 // ApiAuthenticationIdToken is the request body for ID-token authentication.
 type ApiAuthenticationIdToken struct {
 	// IDToken is the ID token from an identity provider.

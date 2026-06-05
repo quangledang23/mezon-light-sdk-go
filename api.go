@@ -85,6 +85,39 @@ func (a *MezonApi) AuthenticateIdToken(ctx context.Context, basicAuthUsername, b
 	return out, nil
 }
 
+// AuthenticateApp authenticates a bot (app) with its API key, mirroring
+// mezonAuthenticate in the TypeScript mezon-sdk. The request body is JSON and
+// the response is a protobuf-encoded Session.
+func (a *MezonApi) AuthenticateApp(ctx context.Context, basicAuthUsername, basicAuthPassword string, body *ApiAuthenticateAppRequest) (*ApiSession, error) {
+	if body == nil {
+		return nil, errors.New("'body' is a required parameter but is nil")
+	}
+
+	payload, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := a.post(ctx, "/v2/apps/authenticate/token", payload, basicAuthHeader(basicAuthUsername, basicAuthPassword))
+	if err != nil {
+		return nil, err
+	}
+
+	out := &proto.Session{}
+	// The gateway answers this endpoint with JSON; fall back to the protobuf
+	// wire format for servers that honor the Accept header.
+	if len(data) > 0 && data[0] == '{' {
+		if err := json.Unmarshal(data, out); err != nil {
+			return nil, err
+		}
+		return out, nil
+	}
+	if err := out.Unmarshal(data); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // SessionRefresh refreshes a user's session using a refresh token retrieved
 // from a previous authentication request.
 func (a *MezonApi) SessionRefresh(ctx context.Context, basicAuthUsername, basicAuthPassword string, body *ApiSessionRefreshRequest) (*ApiSession, error) {

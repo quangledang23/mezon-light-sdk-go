@@ -5,7 +5,8 @@ TypeScript package [`mezon-light-sdk`](../mezon-light-sdk).
 
 ## Features
 
-- Authenticate with an ID token, or restore a session from stored tokens
+- Authenticate as a bot with a bot ID + API key, with an ID token, or
+  restore a session from stored tokens
 - Refresh sessions (single-flight; concurrent callers share one refresh)
 - Create DM / group DM channels
 - Upload attachments
@@ -34,15 +35,21 @@ import (
 func main() {
 	ctx := context.Background()
 
-	// Authenticate with an ID token from an identity provider…
-	client, err := mezonlight.Authenticate(ctx, mezonlight.AuthenticateConfig{
-		IDToken:  "id-token-from-provider",
-		UserID:   "user-123",
-		Username: "johndoe",
+	// Authenticate as a bot with credentials from the Mezon developer portal…
+	client, err := mezonlight.AuthenticateBot(ctx, mezonlight.AuthenticateBotConfig{
+		BotID:  "your-bot-id",
+		APIKey: "your-bot-token",
 	})
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	// …or with an ID token from an identity provider:
+	// client, err := mezonlight.Authenticate(ctx, mezonlight.AuthenticateConfig{
+	// 	IDToken:  "id-token-from-provider",
+	// 	UserID:   "user-123",
+	// 	Username: "johndoe",
+	// })
 
 	// …or restore from previously stored tokens:
 	// client, err := mezonlight.InitClient(mezonlight.ClientInitConfig{
@@ -90,6 +97,20 @@ func main() {
 
 	select {} // keep the process alive to receive messages
 }
+```
+
+### Sending to a clan channel
+
+`LightSocket` covers DMs and group DMs. For clan channels, use the underlying
+`DefaultSocket` directly:
+
+```go
+sock, _ := socket.Socket()
+
+// Channel type 1 = text channel; mode 2 = clan channel message.
+_, err = sock.JoinChat(ctx, clanID, channelID, 1, true)
+ack, err := sock.WriteChatMessage(ctx, clanID, channelID, 2, true,
+	map[string]string{"t": "Hello clan!"}, nil)
 ```
 
 ### Uploading attachments

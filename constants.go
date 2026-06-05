@@ -8,6 +8,10 @@ const (
 	// MezonGWURL is the default Mezon Gateway URL.
 	MezonGWURL = "https://gw.mezon.ai"
 
+	// MezonWSHost is the default WebSocket host, used when authentication
+	// does not return a user-specific one.
+	MezonWSHost = "gw.mezon.ai"
+
 	// SocketReadyMaxRetry is the maximum number of retries when waiting for
 	// the socket to be ready.
 	SocketReadyMaxRetry = 20
