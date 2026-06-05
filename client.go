@@ -6,6 +6,8 @@ import (
 	"net/url"
 	"sync"
 	"time"
+
+	"github.com/quangledang23/mezon-light-sdk-go/proto"
 )
 
 // LightClient provides a simplified interface for Mezon authentication and
@@ -217,6 +219,69 @@ func (c *LightClient) CreateGroupDM(ctx context.Context, userIDs []string) (*Api
 		ChannelPrivate: 1,
 		UserIDs:        userIDs,
 	})
+}
+
+// ListClanUsers lists all users that are members of a clan.
+//
+// Note: bot sessions are not permitted to call this (the gateway answers
+// HTTP 403); bots learn member names from incoming channel messages instead.
+func (c *LightClient) ListClanUsers(ctx context.Context, clanID string) (*ApiClanUserList, error) {
+	return c.client.ListClanUsers(ctx, c.session.Token, clanID)
+}
+
+// GetClanUser finds a clan member by user ID. It returns nil if the user is
+// not a member of the clan.
+func (c *LightClient) GetClanUser(ctx context.Context, clanID, userID string) (*ApiClanUser, error) {
+	list, err := c.ListClanUsers(ctx, clanID)
+	if err != nil {
+		return nil, err
+	}
+	for _, cu := range list.ClanUsers {
+		if cu.User != nil && cu.User.ID == userID {
+			return cu, nil
+		}
+	}
+	return nil, nil
+}
+
+// GetChannelDetail fetches the description of a single channel.
+//
+// Note: bot sessions are not permitted to call this (HTTP 403).
+func (c *LightClient) GetChannelDetail(ctx context.Context, channelID string) (*ApiChannelDescription, error) {
+	return c.client.GetChannelDetail(ctx, c.session.Token, channelID)
+}
+
+// ListChannelDescs lists the channels visible to the current user/bot.
+//
+// Note: bot sessions are not permitted to call this (HTTP 403).
+func (c *LightClient) ListChannelDescs(ctx context.Context, req *proto.ListChannelDescsRequest) (*proto.ChannelDescList, error) {
+	return c.client.ListChannelDescs(ctx, c.session.Token, req)
+}
+
+// ListChannelUsers lists all users that are members of a channel.
+//
+// Note: bot sessions are not permitted to call this (HTTP 403).
+func (c *LightClient) ListChannelUsers(ctx context.Context, clanID, channelID string, channelType int32) (*ApiChannelUserList, error) {
+	return c.client.ListChannelUsers(ctx, c.session.Token, &proto.ListChannelUsersRequest{
+		ClanID:      clanID,
+		ChannelID:   channelID,
+		ChannelType: channelType,
+	})
+}
+
+// GetChannelUser finds a channel member by user ID. It returns nil if the
+// user is not a member of the channel.
+func (c *LightClient) GetChannelUser(ctx context.Context, clanID, channelID string, channelType int32, userID string) (*ApiChannelUser, error) {
+	list, err := c.ListChannelUsers(ctx, clanID, channelID, channelType)
+	if err != nil {
+		return nil, err
+	}
+	for _, cu := range list.ChannelUsers {
+		if cu.UserID == userID {
+			return cu, nil
+		}
+	}
+	return nil, nil
 }
 
 // UploadAttachment uploads an attachment file to the Mezon server and

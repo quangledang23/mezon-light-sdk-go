@@ -381,6 +381,15 @@ func (s *DefaultSocket) removePending(cid int32) {
 	s.mu.Unlock()
 }
 
+// JoinClanChat joins clan-level realtime events on the server, which also
+// registers the connection as an active clan member.
+func (s *DefaultSocket) JoinClanChat(ctx context.Context, clanID string) error {
+	_, err := s.send(ctx, &proto.Envelope{
+		ClanJoin: &proto.ClanJoin{ClanID: clanID},
+	}, s.SendTimeout)
+	return err
+}
+
 // JoinChat joins a chat channel on the server.
 func (s *DefaultSocket) JoinChat(ctx context.Context, clanID, channelID string, channelType int32, isPublic bool) (*proto.Channel, error) {
 	res, err := s.send(ctx, &proto.Envelope{

@@ -10,6 +10,7 @@ import (
 type Envelope struct {
 	Cid                int32               `json:"cid,omitempty"`
 	Channel            *Channel            `json:"channel,omitempty"`
+	ClanJoin           *ClanJoin           `json:"clan_join,omitempty"`
 	ChannelJoin        *ChannelJoin        `json:"channel_join,omitempty"`
 	ChannelLeave       *ChannelLeave       `json:"channel_leave,omitempty"`
 	ChannelMessage     *ChannelMessage     `json:"channel_message,omitempty"`
@@ -26,6 +27,9 @@ func (m *Envelope) MarshalAppend(b []byte) []byte {
 	b = appendInt32(b, 1, m.Cid)
 	if m.Channel != nil {
 		b = appendMessage(b, 2, m.Channel)
+	}
+	if m.ClanJoin != nil {
+		b = appendMessage(b, 3, m.ClanJoin)
 	}
 	if m.ChannelJoin != nil {
 		b = appendMessage(b, 4, m.ChannelJoin)
@@ -67,6 +71,9 @@ func (m *Envelope) Unmarshal(b []byte) error {
 		case num == 2 && typ == protowire.BytesType:
 			m.Channel = &Channel{}
 			d.sub(m.Channel)
+		case num == 3 && typ == protowire.BytesType:
+			m.ClanJoin = &ClanJoin{}
+			d.sub(m.ClanJoin)
 		case num == 4 && typ == protowire.BytesType:
 			m.ChannelJoin = &ChannelJoin{}
 			d.sub(m.ChannelJoin)
@@ -198,6 +205,35 @@ func (m *UserPresence) Unmarshal(b []byte) error {
 			m.IsMobile = d.bool()
 		case num == 6 && typ == protowire.BytesType:
 			m.UserStatus = d.str()
+		default:
+			d.skip(num, typ)
+		}
+	}
+	return d.err
+}
+
+// ClanJoin is mezon.realtime.ClanJoin — joins clan-level realtime events.
+type ClanJoin struct {
+	ClanID string `json:"clan_id,omitempty"`
+}
+
+func (m *ClanJoin) Marshal() []byte { return m.MarshalAppend(nil) }
+
+func (m *ClanJoin) MarshalAppend(b []byte) []byte {
+	b = appendID(b, 1, m.ClanID)
+	return b
+}
+
+func (m *ClanJoin) Unmarshal(b []byte) error {
+	d := decoder{b: b}
+	for {
+		num, typ, ok := d.next()
+		if !ok {
+			break
+		}
+		switch {
+		case num == 1 && typ == protowire.VarintType:
+			m.ClanID = d.id()
 		default:
 			d.skip(num, typ)
 		}

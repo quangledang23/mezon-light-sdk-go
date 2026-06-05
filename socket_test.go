@@ -137,6 +137,25 @@ func TestSocketConnectAndJoinChat(t *testing.T) {
 	}
 }
 
+func TestSocketJoinClanChat(t *testing.T) {
+	joins := make(chan *proto.ClanJoin, 1)
+	ws := newWSTestServer(t, func(env *proto.Envelope) []*proto.Envelope {
+		if env.ClanJoin != nil {
+			joins <- env.ClanJoin
+			return []*proto.Envelope{{Cid: env.Cid}}
+		}
+		return pongReply(env)
+	})
+
+	s := connectSocket(t, ws)
+	if err := s.JoinClanChat(context.Background(), "555"); err != nil {
+		t.Fatalf("JoinClanChat: %v", err)
+	}
+	if join := <-joins; join.ClanID != "555" {
+		t.Errorf("server received clan join = %+v", join)
+	}
+}
+
 func TestSocketWriteChatMessage(t *testing.T) {
 	sends := make(chan *proto.ChannelMessageSend, 1)
 	ws := newWSTestServer(t, func(env *proto.Envelope) []*proto.Envelope {

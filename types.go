@@ -14,6 +14,11 @@ type (
 	ApiMessageAttachment        = proto.MessageAttachment
 	ApiUploadAttachment         = proto.UploadAttachment
 	ApiUploadAttachmentRequest  = proto.UploadAttachmentRequest
+	ApiUser                     = proto.User
+	ApiClanUser                 = proto.ClanUser
+	ApiClanUserList             = proto.ClanUserList
+	ApiChannelUser              = proto.ChannelUser
+	ApiChannelUserList          = proto.ChannelUserList
 )
 
 // ClientInitConfig configures a LightClient created from existing tokens.

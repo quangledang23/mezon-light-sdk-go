@@ -155,6 +155,80 @@ func (a *MezonApi) CreateChannelDesc(ctx context.Context, bearerToken string, bo
 	return out, nil
 }
 
+// ListClanUsers lists all users that are members of a clan.
+func (a *MezonApi) ListClanUsers(ctx context.Context, bearerToken, clanID string) (*ApiClanUserList, error) {
+	if clanID == "" {
+		return nil, errors.New("'clanID' is a required parameter but is empty")
+	}
+
+	req := &proto.ListClanUsersRequest{ClanID: clanID}
+	data, err := a.post(ctx, "/mezon.api.Mezon/ListClanUsers", req.Marshal(), bearerAuthHeader(bearerToken))
+	if err != nil {
+		return nil, err
+	}
+
+	out := &proto.ClanUserList{}
+	if err := out.Unmarshal(data); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// ListChannelDescs lists the channels visible to the current user/bot.
+func (a *MezonApi) ListChannelDescs(ctx context.Context, bearerToken string, req *proto.ListChannelDescsRequest) (*proto.ChannelDescList, error) {
+	if req == nil {
+		req = &proto.ListChannelDescsRequest{}
+	}
+
+	data, err := a.post(ctx, "/mezon.api.Mezon/ListChannelDescs", req.Marshal(), bearerAuthHeader(bearerToken))
+	if err != nil {
+		return nil, err
+	}
+
+	out := &proto.ChannelDescList{}
+	if err := out.Unmarshal(data); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// GetChannelDetail fetches the description of a single channel.
+func (a *MezonApi) GetChannelDetail(ctx context.Context, bearerToken, channelID string) (*ApiChannelDescription, error) {
+	if channelID == "" {
+		return nil, errors.New("'channelID' is a required parameter but is empty")
+	}
+
+	req := &proto.ListChannelDetailRequest{ChannelID: channelID}
+	data, err := a.post(ctx, "/mezon.api.Mezon/ListChannelDetail", req.Marshal(), bearerAuthHeader(bearerToken))
+	if err != nil {
+		return nil, err
+	}
+
+	out := &proto.ChannelDescription{}
+	if err := out.Unmarshal(data); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// ListChannelUsers lists all users that are members of a channel.
+func (a *MezonApi) ListChannelUsers(ctx context.Context, bearerToken string, req *proto.ListChannelUsersRequest) (*ApiChannelUserList, error) {
+	if req == nil {
+		return nil, errors.New("'req' is a required parameter but is nil")
+	}
+
+	data, err := a.post(ctx, "/mezon.api.Mezon/ListChannelUsers", req.Marshal(), bearerAuthHeader(bearerToken))
+	if err != nil {
+		return nil, err
+	}
+
+	out := &proto.ChannelUserList{}
+	if err := out.Unmarshal(data); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // UploadAttachmentFile registers an attachment upload and returns the file
 // URL that can be used in messages.
 func (a *MezonApi) UploadAttachmentFile(ctx context.Context, bearerToken string, body *ApiUploadAttachmentRequest) (*ApiUploadAttachment, error) {
