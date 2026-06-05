@@ -1,0 +1,257 @@
+package mezonlight
+
+import (
+	"context"
+	"log"
+	"net/url"
+	"sync"
+	"time"
+)
+
+// LightClient provides a simplified interface for Mezon authentication and
+// channel management.
+//
+//	// Initialize from existing tokens:
+//	client, err := mezonlight.InitClient(mezonlight.ClientInitConfig{
+//		Token:        "your-token",
+//		RefreshToken: "your-refresh-token",
+//		APIURL:       "https://api.mezon.ai",
+//		WSURL:        "gw.mezon.ai",
+//		UserID:       "user-123",
+//	})
+//
+//	// Or authenticate with an ID token:
+//	client, err := mezonlight.Authenticate(ctx, mezonlight.AuthenticateConfig{
+//		IDToken:  "id-token-from-provider",
+//		UserID:   "user-123",
+//		Username: "johndoe",
+//	})
+type LightClient struct {
+	session *Session
+	client  *MezonApi
+	userID  string
+
+	// OnRefreshSession, if set, is called after each successful token
+	// refresh.
+	OnRefreshSession func(session *ApiSession)
+
+	refreshMu   sync.Mutex
+	refreshDone chan struct{}
+	refreshErr  error
+}
+
+// parseBaseURL extracts "scheme://host[:port]" from a URL, mirroring
+// parseBaseUrl in the TypeScript SDK.
+func parseBaseURL(apiURL string) (string, error) {
+	u, err := url.Parse(apiURL)
+	if err != nil {
+		return "", err
+	}
+	scheme := "http"
+	if u.Scheme == "https" {
+		scheme = "https"
+	}
+	return scheme + "://" + u.Host, nil
+}
+
+// InitClient initializes a LightClient from existing session tokens. Use
+// this when you have stored tokens from a previous authentication.
+func InitClient(config ClientInitConfig) (*LightClient, error) {
+	if config.Token == "" || config.RefreshToken == "" || config.APIURL == "" || config.WSURL == "" || config.UserID == "" {
+		return nil, &SessionError{Message: "missing required fields: Token, RefreshToken, APIURL, WSURL, and UserID are all required"}
+	}
+
+	session, err := RestoreSession(config.Token, config.RefreshToken, config.APIURL, config.WSURL, true)
+	if err != nil {
+		return nil, err
+	}
+
+	serverKey := config.ServerKey
+	if serverKey == "" {
+		serverKey = DefaultServerKey
+	}
+	basePath, err := parseBaseURL(config.APIURL)
+	if err != nil {
+		return nil, &SessionError{Message: "invalid APIURL: " + err.Error()}
+	}
+
+	return &LightClient{
+		session: session,
+		client:  NewMezonApi(serverKey, 7*time.Second, basePath),
+		userID:  config.UserID,
+	}, nil
+}
+
+// Authenticate authenticates a user with an ID token from an identity
+// provider.
+func Authenticate(ctx context.Context, config AuthenticateConfig) (*LightClient, error) {
+	serverKey := config.ServerKey
+	if serverKey == "" {
+		serverKey = DefaultServerKey
+	}
+	gatewayURL := config.GatewayURL
+	if gatewayURL == "" {
+		gatewayURL = MezonGWURL
+	}
+
+	basePath, err := parseBaseURL(gatewayURL)
+	if err != nil {
+		return nil, &AuthenticationError{Message: "invalid gateway URL: " + err.Error()}
+	}
+	client := NewMezonApi(serverKey, 7*time.Second, basePath)
+
+	response, err := client.AuthenticateIdToken(ctx, serverKey, "", &ApiAuthenticationIdToken{
+		IDToken:  config.IDToken,
+		UserID:   config.UserID,
+		Username: config.Username,
+	})
+	if err != nil {
+		return nil, err
+	}
+	if response.Token == "" || response.RefreshToken == "" || response.APIURL == "" || response.WSURL == "" || response.UserID == "" {
+		return nil, &AuthenticationError{Message: "invalid authentication response: missing required fields"}
+	}
+
+	session, err := RestoreSession(response.Token, response.RefreshToken, response.APIURL, response.WSURL, true)
+	if err != nil {
+		return nil, err
+	}
+	apiBase, err := parseBaseURL(response.APIURL)
+	if err != nil {
+		return nil, &AuthenticationError{Message: "invalid api_url in authentication response: " + err.Error()}
+	}
+	client.SetBasePath(apiBase)
+
+	return &LightClient{
+		session: session,
+		client:  client,
+		userID:  response.UserID,
+	}, nil
+}
+
+// UserID returns the current user ID.
+func (c *LightClient) UserID() string { return c.userID }
+
+// Session returns the underlying Mezon session.
+func (c *LightClient) Session() *Session { return c.session }
+
+// Client returns the underlying Mezon API client.
+func (c *LightClient) Client() *MezonApi { return c.client }
+
+// CreateDM creates a direct message channel with a single user.
+func (c *LightClient) CreateDM(ctx context.Context, peerID string) (*ApiChannelDescription, error) {
+	return c.client.CreateChannelDesc(ctx, c.session.Token, &ApiCreateChannelDescRequest{
+		Type:           ChannelTypeDM,
+		ChannelPrivate: 1,
+		UserIDs:        []string{peerID},
+	})
+}
+
+// CreateGroupDM creates a group direct message channel with multiple users.
+func (c *LightClient) CreateGroupDM(ctx context.Context, userIDs []string) (*ApiChannelDescription, error) {
+	if len(userIDs) == 0 {
+		return nil, &SessionError{Message: "at least one user ID is required for a group DM"}
+	}
+	return c.client.CreateChannelDesc(ctx, c.session.Token, &ApiCreateChannelDescRequest{
+		Type:           ChannelTypeGroup,
+		ChannelPrivate: 1,
+		UserIDs:        userIDs,
+	})
+}
+
+// UploadAttachment uploads an attachment file to the Mezon server and
+// returns the URL of the uploaded file, which can be used in messages.
+func (c *LightClient) UploadAttachment(ctx context.Context, request *ApiUploadAttachmentRequest) (*ApiUploadAttachment, error) {
+	return c.client.UploadAttachmentFile(ctx, c.session.Token, request)
+}
+
+// RefreshSession refreshes the current session using the refresh token.
+// Call this before the session expires to maintain connectivity. Concurrent
+// callers share a single in-flight refresh.
+func (c *LightClient) RefreshSession(ctx context.Context) (*Session, error) {
+	if c.session.Created && c.session.ExpiresAt-c.session.CreatedAt < 70 {
+		log.Println("Session lifetime too short, please set '--session.token_expiry_sec' option. See the documentation for more info: https://mezon.vn/docs/mezon/getting-started/configuration/#session")
+	}
+	if c.session.Created && c.session.RefreshExpiresAt-c.session.CreatedAt < 3700 {
+		log.Println("Session refresh lifetime too short, please set '--session.refresh_token_expiry_sec' option. See the documentation for more info: https://mezon.vn/docs/mezon/getting-started/configuration/#session")
+	}
+
+	c.refreshMu.Lock()
+	if c.refreshDone != nil {
+		done := c.refreshDone
+		c.refreshMu.Unlock()
+		select {
+		case <-done:
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+		c.refreshMu.Lock()
+		err := c.refreshErr
+		c.refreshMu.Unlock()
+		return c.session, err
+	}
+	done := make(chan struct{})
+	c.refreshDone = done
+	c.refreshMu.Unlock()
+
+	serverKey := c.client.ServerKey
+	if serverKey == "" {
+		serverKey = DefaultServerKey
+	}
+	apiSession, err := c.client.SessionRefresh(ctx, serverKey, "", &ApiSessionRefreshRequest{
+		Token:      c.session.RefreshToken,
+		Vars:       c.session.Vars,
+		IsRemember: c.session.IsRemember,
+	})
+	if err == nil {
+		err = c.session.Update(apiSession.Token, apiSession.RefreshToken, apiSession.IsRemember)
+		if err == nil && c.OnRefreshSession != nil {
+			c.OnRefreshSession(apiSession)
+		}
+	}
+	if err != nil {
+		log.Printf("Session refresh failed: %v", err)
+	}
+
+	c.refreshMu.Lock()
+	c.refreshErr = err
+	c.refreshDone = nil
+	close(done)
+	c.refreshMu.Unlock()
+
+	return c.session, err
+}
+
+// CreateSocket creates a socket with the client's configuration.
+func (c *LightClient) CreateSocket(verbose bool) *DefaultSocket {
+	return NewDefaultSocket(c.session.WSURL, "443", true, verbose)
+}
+
+// IsSessionExpired reports whether the current session token has expired.
+func (c *LightClient) IsSessionExpired() bool {
+	return c.session.IsExpired(time.Now())
+}
+
+// IsRefreshSessionExpired reports whether the refresh token has expired. If
+// it returns true, the user needs to re-authenticate.
+func (c *LightClient) IsRefreshSessionExpired() bool {
+	return c.session.IsRefreshExpired(time.Now())
+}
+
+// Token returns the authentication token for external use.
+func (c *LightClient) Token() string { return c.session.Token }
+
+// RefreshToken returns the refresh token for storage.
+func (c *LightClient) RefreshToken() string { return c.session.RefreshToken }
+
+// ExportSession exports session data for storage and later restoration via
+// InitClient.
+func (c *LightClient) ExportSession() ClientInitConfig {
+	return ClientInitConfig{
+		Token:        c.session.Token,
+		RefreshToken: c.session.RefreshToken,
+		APIURL:       c.session.APIURL,
+		WSURL:        c.session.WSURL,
+		UserID:       c.userID,
+	}
+}
