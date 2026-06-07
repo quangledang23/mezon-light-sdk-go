@@ -12,6 +12,7 @@ type (
 	ApiChannelDescription       = proto.ChannelDescription
 	ApiCreateChannelDescRequest = proto.CreateChannelDescRequest
 	ApiMessageAttachment        = proto.MessageAttachment
+	ApiMessageMention           = proto.MessageMention
 	ApiUploadAttachment         = proto.UploadAttachment
 	ApiUploadAttachmentRequest  = proto.UploadAttachmentRequest
 	ApiUser                     = proto.User
@@ -125,6 +126,7 @@ type ChannelMessage struct {
 	ClanID            string                  `json:"clan_id,omitempty"`
 	Code              int32                   `json:"code"`
 	Content           any                     `json:"content"`
+	Mentions          []*ApiMessageMention    `json:"mentions,omitempty"`
 	Attachments       []*ApiMessageAttachment `json:"attachments,omitempty"`
 	SenderID          string                  `json:"sender_id"`
 	ClanLogo          string                  `json:"clan_logo,omitempty"`
@@ -143,8 +145,8 @@ type ChannelMessage struct {
 }
 
 // newChannelMessageFromProto mirrors createChannelMessageFromEvent in the
-// TypeScript SDK: it decodes content (JSON) and attachments (JSON or
-// protobuf MessageAttachmentList).
+// TypeScript SDK: it decodes content (JSON) plus mentions and attachments
+// (JSON or protobuf list messages).
 func newChannelMessageFromProto(pm *proto.ChannelMessage) *ChannelMessage {
 	return &ChannelMessage{
 		ID:                pm.MessageID,
@@ -154,6 +156,7 @@ func newChannelMessageFromProto(pm *proto.ChannelMessage) *ChannelMessage {
 		ClanID:            pm.ClanID,
 		Code:              pm.Code,
 		Content:           SafeJSONParse([]byte(pm.Content)),
+		Mentions:          DecodeMentions(pm.Mentions),
 		Attachments:       DecodeAttachments(pm.Attachments),
 		SenderID:          pm.SenderID,
 		ClanLogo:          pm.ClanLogo,

@@ -59,3 +59,32 @@ func DecodeAttachments(data []byte) []*proto.MessageAttachment {
 	}
 	return nil
 }
+
+// DecodeMentions decodes a channel message mentions payload, which may be
+// either JSON or a protobuf-encoded MessageMentionList.
+func DecodeMentions(data []byte) []*proto.MessageMention {
+	if len(data) == 0 {
+		return nil
+	}
+
+	// '[' (JSON array) or '{' (JSON object) marks a JSON payload.
+	if data[0] == '[' || data[0] == '{' {
+		var list []*proto.MessageMention
+		if err := json.Unmarshal(data, &list); err == nil {
+			return list
+		}
+		var wrapper struct {
+			Mentions []*proto.MessageMention `json:"mentions"`
+		}
+		if err := json.Unmarshal(data, &wrapper); err == nil {
+			return wrapper.Mentions
+		}
+		return nil
+	}
+
+	list := &proto.MessageMentionList{}
+	if err := list.Unmarshal(data); err == nil {
+		return list.Mentions
+	}
+	return nil
+}

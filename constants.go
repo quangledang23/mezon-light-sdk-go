@@ -37,4 +37,14 @@ const (
 
 	// DefaultServerKey is the default server key if none is provided.
 	DefaultServerKey = "DefaultServerKey"
+
+	// MentionHereUserID is the sentinel user ID the official clients put in a
+	// mention's user_id for "@here" (ID_MENTION_HERE in the Mezon web app).
+	// Without it the clients render the mention as a role mention (green)
+	// instead of a user mention (blue).
+	MentionHereUserID = "1775731111020111321"
+
+	// MentionHereTitle is the literal mention text that must appear in the
+	// message content at the mention's s/e offsets.
+	MentionHereTitle = "@here"
 )

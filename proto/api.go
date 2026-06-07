@@ -279,6 +279,40 @@ func (m *MessageAttachmentList) Unmarshal(b []byte) error {
 	return d.err
 }
 
+// MessageMentionList is mezon.api.MessageMentionList.
+type MessageMentionList struct {
+	Mentions []*MessageMention `json:"mentions,omitempty"`
+}
+
+func (m *MessageMentionList) Marshal() []byte { return m.MarshalAppend(nil) }
+
+func (m *MessageMentionList) MarshalAppend(b []byte) []byte {
+	for _, v := range m.Mentions {
+		b = appendMessage(b, 1, v)
+	}
+	return b
+}
+
+func (m *MessageMentionList) Unmarshal(b []byte) error {
+	d := decoder{b: b}
+	for {
+		num, typ, ok := d.next()
+		if !ok {
+			break
+		}
+		if num == 1 && typ == protowire.BytesType {
+			v := &MessageMention{}
+			d.sub(v)
+			if d.err == nil {
+				m.Mentions = append(m.Mentions, v)
+			}
+		} else {
+			d.skip(num, typ)
+		}
+	}
+	return d.err
+}
+
 // MessageRef is mezon.api.MessageRef.
 type MessageRef struct {
 	MessageID                string `json:"message_id,omitempty"`

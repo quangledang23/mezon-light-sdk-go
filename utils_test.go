@@ -120,3 +120,57 @@ func TestDecodeAttachments(t *testing.T) {
 		}
 	})
 }
+
+func TestDecodeMentions(t *testing.T) {
+	mention := &proto.MessageMention{
+		UserID:   MentionHereUserID,
+		Username: "@here",
+		S:        0,
+		E:        5,
+	}
+
+	t.Run("empty input", func(t *testing.T) {
+		if got := DecodeMentions(nil); got != nil {
+			t.Errorf("DecodeMentions(nil) = %v, want nil", got)
+		}
+		if got := DecodeMentions([]byte{}); got != nil {
+			t.Errorf("DecodeMentions(empty) = %v, want nil", got)
+		}
+	})
+
+	t.Run("JSON array", func(t *testing.T) {
+		data := []byte(`[{"user_id":"1775731111020111321","username":"@here","e":5}]`)
+		got := DecodeMentions(data)
+		if len(got) != 1 || !reflect.DeepEqual(got[0], mention) {
+			t.Errorf("DecodeMentions(JSON array) = %+v, want [%+v]", got, mention)
+		}
+	})
+
+	t.Run("JSON wrapper object", func(t *testing.T) {
+		data := []byte(`{"mentions":[{"user_id":"1775731111020111321","username":"@here","e":5}]}`)
+		got := DecodeMentions(data)
+		if len(got) != 1 || !reflect.DeepEqual(got[0], mention) {
+			t.Errorf("DecodeMentions(JSON wrapper) = %+v, want [%+v]", got, mention)
+		}
+	})
+
+	t.Run("protobuf MessageMentionList", func(t *testing.T) {
+		list := &proto.MessageMentionList{Mentions: []*proto.MessageMention{mention}}
+		got := DecodeMentions(list.Marshal())
+		if len(got) != 1 || !reflect.DeepEqual(got[0], mention) {
+			t.Errorf("DecodeMentions(protobuf) = %+v, want [%+v]", got, mention)
+		}
+	})
+
+	t.Run("invalid JSON array", func(t *testing.T) {
+		if got := DecodeMentions([]byte(`[{"bad`)); got != nil {
+			t.Errorf("DecodeMentions(invalid JSON) = %v, want nil", got)
+		}
+	})
+
+	t.Run("invalid protobuf", func(t *testing.T) {
+		if got := DecodeMentions([]byte{0xff}); got != nil {
+			t.Errorf("DecodeMentions(invalid protobuf) = %v, want nil", got)
+		}
+	})
+}

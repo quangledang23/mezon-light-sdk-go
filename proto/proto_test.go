@@ -195,6 +195,16 @@ func TestMessageAttachmentListRoundTrip(t *testing.T) {
 	roundTrip(t, in, &MessageAttachmentList{})
 }
 
+func TestMessageMentionListRoundTrip(t *testing.T) {
+	in := &MessageMentionList{
+		Mentions: []*MessageMention{
+			{UserID: "1775731111020111321", Username: "@here", E: 5},
+			{RoleID: "42", Rolename: "admin", S: 6, E: 12},
+		},
+	}
+	roundTrip(t, in, &MessageMentionList{})
+}
+
 func TestLargeSnowflakeIDs(t *testing.T) {
 	// IDs near the int64 boundary must survive the string<->varint conversion.
 	in := &ChannelJoin{ClanID: "9223372036854775807", ChannelID: "1842581456916774912", ChannelType: 3}
