@@ -3,61 +3,9 @@ package mezonlight
 import (
 	"context"
 	"errors"
-	"reflect"
 	"testing"
 	"time"
 )
-
-func TestMessageContent(t *testing.T) {
-	text := "see https://mezon.ai"
-	wantMk := []*MessageMarkup{{Type: MarkupTypeLink, S: 4, E: 20}}
-
-	t.Run("string gets link markup", func(t *testing.T) {
-		want := &MessageContent{T: text, Mk: wantMk}
-		if got := messageContent(text, false); !reflect.DeepEqual(got, want) {
-			t.Errorf("messageContent = %+v, want %+v", got, want)
-		}
-	})
-
-	t.Run("hideLink passes through", func(t *testing.T) {
-		if got := messageContent(text, true); got != any(text) {
-			t.Errorf("messageContent(hideLink) = %+v, want %q", got, text)
-		}
-	})
-
-	t.Run("string map gets link markup", func(t *testing.T) {
-		in := map[string]string{"t": text}
-		want := map[string]any{"t": text, "mk": wantMk}
-		if got := messageContent(in, false); !reflect.DeepEqual(got, want) {
-			t.Errorf("messageContent = %+v, want %+v", got, want)
-		}
-	})
-
-	t.Run("map without links unchanged", func(t *testing.T) {
-		in := map[string]string{"t": "hello"}
-		if got := messageContent(in, false); !reflect.DeepEqual(got, any(in)) {
-			t.Errorf("messageContent = %+v, want %+v", got, in)
-		}
-	})
-
-	t.Run("existing mk untouched", func(t *testing.T) {
-		in := map[string]any{"t": text, "mk": []any{"custom"}}
-		if got := messageContent(in, false); !reflect.DeepEqual(got, any(in)) {
-			t.Errorf("messageContent = %+v, want %+v", got, in)
-		}
-	})
-
-	t.Run("MessageContent gets mk filled without mutating input", func(t *testing.T) {
-		in := &MessageContent{T: text}
-		got, ok := messageContent(in, false).(*MessageContent)
-		if !ok || !reflect.DeepEqual(got.Mk, wantMk) {
-			t.Errorf("messageContent = %+v, want Mk %+v", got, wantMk)
-		}
-		if in.Mk != nil {
-			t.Errorf("input mutated: %+v", in.Mk)
-		}
-	})
-}
 
 func TestWaitForSocketReady(t *testing.T) {
 	t.Run("never ready", func(t *testing.T) {

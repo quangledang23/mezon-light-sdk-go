@@ -61,48 +61,18 @@ type SendMessagePayload struct {
 	// Plain strings and {"t": ...} maps get "lk" markup added automatically
 	// for any URLs so clients render them as clickable links.
 	Content any
+	// Mentions holds user/role mention entries pointing into the content
+	// text (see ContentBuilder).
+	Mentions []*ApiMessageMention
 	// Attachments holds optional file/media attachments.
 	Attachments []*ApiMessageAttachment
+	// MentionEveryone notifies everyone in the channel.
+	MentionEveryone bool
 	// HideLink, when true, leaves URLs in the content as plain text instead
 	// of marking them up as clickable links.
 	HideLink bool
 	// Code is the optional message code.
 	Code int32
-}
-
-// Markup types for MessageMarkup.Type.
-const (
-	// MarkupTypeLink renders the covered text as a clickable link.
-	MarkupTypeLink = "lk"
-	// MarkupTypePre renders the covered text as a preformatted block.
-	MarkupTypePre = "pre"
-)
-
-// MessageMarkup is one markup token of message content ("mk"); S and E are
-// character offsets (not bytes) into the content text.
-type MessageMarkup struct {
-	Type string `json:"type"`
-	S    int32  `json:"s,omitempty"`
-	E    int32  `json:"e,omitempty"`
-}
-
-// MessageHashtag is one channel reference of message content ("hg"); S and E
-// are character offsets (not bytes) into the content text.
-type MessageHashtag struct {
-	ChannelID string `json:"channelid"`
-	S         int32  `json:"s,omitempty"`
-	E         int32  `json:"e,omitempty"`
-}
-
-// MessageContent is the structured content of a channel message, the same
-// shape the Mezon clients and webhooks use ({"t": ..., "mk": [...], ...}).
-type MessageContent struct {
-	// T is the message text.
-	T string `json:"t"`
-	// Mk holds markup tokens (links, preformatted blocks, ...).
-	Mk []*MessageMarkup `json:"mk,omitempty"`
-	// Hg holds channel hashtag references.
-	Hg []*MessageHashtag `json:"hg,omitempty"`
 }
 
 // AuthenticateBotConfig configures authentication of a bot (app) using the
@@ -151,64 +121,4 @@ type AuthenticationIdTokenResponse struct {
 	WSURL string `json:"ws_url"`
 	// UserID is the user ID of the authenticated user.
 	UserID string `json:"user_id"`
-}
-
-// ChannelMessage is a message received on a channel, with content and
-// attachments already decoded (the wire-level counterpart is
-// proto.ChannelMessage).
-type ChannelMessage struct {
-	ID                string                  `json:"id"`
-	Avatar            string                  `json:"avatar,omitempty"`
-	ChannelID         string                  `json:"channel_id"`
-	ChannelLabel      string                  `json:"channel_label"`
-	ClanID            string                  `json:"clan_id,omitempty"`
-	Code              int32                   `json:"code"`
-	Content           any                     `json:"content"`
-	Mentions          []*ApiMessageMention    `json:"mentions,omitempty"`
-	Attachments       []*ApiMessageAttachment `json:"attachments,omitempty"`
-	SenderID          string                  `json:"sender_id"`
-	ClanLogo          string                  `json:"clan_logo,omitempty"`
-	CategoryName      string                  `json:"category_name,omitempty"`
-	Username          string                  `json:"username,omitempty"`
-	ClanNick          string                  `json:"clan_nick,omitempty"`
-	ClanAvatar        string                  `json:"clan_avatar,omitempty"`
-	DisplayName       string                  `json:"display_name,omitempty"`
-	CreateTimeSeconds uint32                  `json:"create_time_seconds,omitempty"`
-	UpdateTimeSeconds uint32                  `json:"update_time_seconds,omitempty"`
-	Mode              int32                   `json:"mode,omitempty"`
-	MessageID         string                  `json:"message_id,omitempty"`
-	HideEditted       bool                    `json:"hide_editted,omitempty"`
-	IsPublic          bool                    `json:"is_public,omitempty"`
-	TopicID           string                  `json:"topic_id,omitempty"`
-}
-
-// newChannelMessageFromProto mirrors createChannelMessageFromEvent in the
-// TypeScript SDK: it decodes content (JSON) plus mentions and attachments
-// (JSON or protobuf list messages).
-func newChannelMessageFromProto(pm *proto.ChannelMessage) *ChannelMessage {
-	return &ChannelMessage{
-		ID:                pm.MessageID,
-		Avatar:            pm.Avatar,
-		ChannelID:         pm.ChannelID,
-		ChannelLabel:      pm.ChannelLabel,
-		ClanID:            pm.ClanID,
-		Code:              pm.Code,
-		Content:           SafeJSONParse([]byte(pm.Content)),
-		Mentions:          DecodeMentions(pm.Mentions),
-		Attachments:       DecodeAttachments(pm.Attachments),
-		SenderID:          pm.SenderID,
-		ClanLogo:          pm.ClanLogo,
-		CategoryName:      pm.CategoryName,
-		Username:          pm.Username,
-		ClanNick:          pm.ClanNick,
-		ClanAvatar:        pm.ClanAvatar,
-		DisplayName:       pm.DisplayName,
-		CreateTimeSeconds: pm.CreateTimeSeconds,
-		UpdateTimeSeconds: pm.UpdateTimeSeconds,
-		Mode:              pm.Mode,
-		MessageID:         pm.MessageID,
-		HideEditted:       pm.HideEditted,
-		IsPublic:          pm.IsPublic,
-		TopicID:           pm.TopicID,
-	}
 }

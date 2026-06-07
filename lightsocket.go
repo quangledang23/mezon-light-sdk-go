@@ -255,8 +255,10 @@ func (s *LightSocket) SendDM(ctx context.Context, payload SendMessagePayload) er
 	}
 	content := messageContent(payload.Content, payload.HideLink)
 	_, err = socket.WriteChatMessage(ctx, ClanDM, payload.ChannelID, StreamModeDM, false, content, &ChatMessageOptions{
-		Attachments: payload.Attachments,
-		Code:        payload.Code,
+		Mentions:        payload.Mentions,
+		Attachments:     payload.Attachments,
+		MentionEveryone: payload.MentionEveryone,
+		Code:            payload.Code,
 	})
 	return err
 }
@@ -269,64 +271,10 @@ func (s *LightSocket) SendGroup(ctx context.Context, payload SendMessagePayload)
 	}
 	content := messageContent(payload.Content, payload.HideLink)
 	_, err = socket.WriteChatMessage(ctx, ClanDM, payload.ChannelID, StreamModeGroup, false, content, &ChatMessageOptions{
-		Attachments: payload.Attachments,
+		Mentions:        payload.Mentions,
+		Attachments:     payload.Attachments,
+		MentionEveryone: payload.MentionEveryone,
+		Code:            payload.Code,
 	})
 	return err
-}
-
-// messageContent prepares a payload's content for sending: plain text and
-// {"t": ...}-shaped content get "lk" markup added for any URLs so clients
-// render them as clickable links. Content that already carries markup, other
-// shapes, and everything when hideLink is set pass through unchanged.
-func messageContent(content any, hideLink bool) any {
-	if hideLink {
-		return content
-	}
-	switch c := content.(type) {
-	case string:
-		return NewTextContent(c)
-	case *MessageContent:
-		if len(c.Mk) > 0 {
-			return c
-		}
-		if mk := ExtractLinks(c.T); len(mk) > 0 {
-			withMk := *c
-			withMk.Mk = mk
-			return &withMk
-		}
-	case map[string]string:
-		t, ok := c["t"]
-		if !ok {
-			return content
-		}
-		mk := ExtractLinks(t)
-		if len(mk) == 0 {
-			return content
-		}
-		out := make(map[string]any, len(c)+1)
-		for k, v := range c {
-			out[k] = v
-		}
-		out["mk"] = mk
-		return out
-	case map[string]any:
-		if _, exists := c["mk"]; exists {
-			return content
-		}
-		t, ok := c["t"].(string)
-		if !ok {
-			return content
-		}
-		mk := ExtractLinks(t)
-		if len(mk) == 0 {
-			return content
-		}
-		out := make(map[string]any, len(c)+1)
-		for k, v := range c {
-			out[k] = v
-		}
-		out["mk"] = mk
-		return out
-	}
-	return content
 }
