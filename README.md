@@ -1,7 +1,8 @@
 # Mezon Light SDK for Go
 
 A lightweight Go SDK for [Mezon](https://mezon.ai) chat, ported from the
-TypeScript package [`mezon-light-sdk`](../mezon-light-sdk).
+TypeScript package
+[`mezon-light-sdk`](https://www.npmjs.com/package/mezon-light-sdk).
 
 ## Features
 
@@ -13,6 +14,10 @@ TypeScript package [`mezon-light-sdk`](../mezon-light-sdk).
 - Realtime messaging over WebSocket using the protobuf wire protocol
   (join/leave channels, send/receive messages, heartbeat with automatic
   dead-connection detection)
+- Rich message content: clickable links (auto-detected or explicit),
+  code/bold markup, user/role/`@here` mentions, channel hashtags and
+  custom emojis via `ContentBuilder` — character offsets handled for you
+- Incoming messages arrive with content, mentions and attachments decoded
 
 ## Installation
 
@@ -87,9 +92,11 @@ func main() {
 	if err := socket.JoinDMChannel(ctx, channel.ChannelID); err != nil {
 		log.Fatal(err)
 	}
+	// URLs in plain text become clickable links automatically
+	// (set HideLink: true to keep them plain).
 	err = socket.SendDM(ctx, mezonlight.SendMessagePayload{
 		ChannelID: channel.ChannelID,
-		Content:   map[string]string{"t": "Hello!"},
+		Content:   "Hello! Docs: https://mezon.ai/docs/developer",
 	})
 	if err != nil {
 		log.Fatal(err)
@@ -110,7 +117,70 @@ sock, _ := socket.Socket()
 // Channel type 1 = text channel; mode 2 = clan channel message.
 _, err = sock.JoinChat(ctx, clanID, channelID, 1, true)
 ack, err := sock.WriteChatMessage(ctx, clanID, channelID, 2, true,
-	map[string]string{"t": "Hello clan!"}, nil)
+	mezonlight.NewTextContent("Hello clan! https://mezon.ai"), nil)
+```
+
+### Rich content: links, markup, mentions, hashtags, emojis
+
+Mezon messages carry plain text (`t`) plus position-based tokens: `mk`
+(markup: links, code, bold), `hg` (channel hashtags) and `ej` (custom
+emojis) inside the content, and a `mentions` array next to it. All offsets
+are character indices into the text. `ContentBuilder` assembles them so you
+never count offsets by hand:
+
+```go
+b := mezonlight.NewContentBuilder()
+b.Text("Deploy xong ").
+	MentionHere().              // "@here", notifies the channel (blue mention)
+	Text(", chi tiết: ").
+	Link("https://ci.example.com").
+	Text(" tại ").
+	Hashtag(channelID, "#deploys").
+	Text(" — ").
+	Bold("quan trọng")
+
+ack, err := sock.WriteChatMessage(ctx, clanID, channelID, 2, true,
+	b.Content(), &mezonlight.ChatMessageOptions{
+		Mentions:        b.Mentions(),
+		MentionEveryone: true, // makes @here actually notify everyone
+	})
+```
+
+Also available: `MentionUser(userID, "@alice")`, `MentionRole(roleID,
+"@admins")` (renders green), `Code("...")`, `Emoji(emojiID, ":smile:")`,
+`Markup(markupType, text)` for the remaining `mk` types (`MarkupTypePre`,
+`MarkupTypeTriple`, `MarkupTypeSingle`, `MarkupTypeCode`,
+`MarkupTypeVoiceLink`), and inline images (webhook-style `images` field,
+e.g. with a URL from `UploadAttachment`):
+
+```go
+b.Image(&mezonlight.MessageImage{
+	Filename: "dog.jpg",
+	URL:      "https://cdn.mezon.vn/.../dog.jpg",
+	Filetype: "image/jpeg",
+	Width:    275,
+	Height:   183,
+})
+```
+
+Note on `@here`: clients render a mention as a blue user mention only when
+its `user_id` is the sentinel `mezonlight.MentionHereUserID`
+(`"1775731111020111321"`, hardcoded in the official clients); a mention
+without a user ID falls into the role-mention path and renders green.
+`MentionHere()` handles this for you.
+
+### Receiving messages
+
+Incoming messages arrive decoded: `Content` is the parsed content JSON,
+`Mentions` and `Attachments` are typed slices (the server sends them as
+protobuf or JSON; both are handled):
+
+```go
+socket.OnChannelMessage(func(msg *mezonlight.ChannelMessage) {
+	content, _ := msg.Content.(map[string]any)
+	text, _ := content["t"].(string)
+	log.Printf("%s: %s (mentions: %d)", msg.Username, text, len(msg.Mentions))
+})
 ```
 
 ### Uploading attachments
@@ -144,7 +214,7 @@ config := client.ExportSession()
 
 | Path        | Contents                                                            |
 | ----------- | ------------------------------------------------------------------- |
-| `.` (root)  | `LightClient`, `LightSocket`, `DefaultSocket`, `MezonApi`, `Session` |
+| `.` (root)  | `LightClient`, `LightSocket`, `DefaultSocket`, `MezonApi`, `Session`; `content.go` (outgoing content: `ContentBuilder`, markup/hashtag/emoji/image tokens, link extraction), `message.go` (incoming `ChannelMessage` decoding) |
 | `proto`     | Hand-written protobuf wire codecs for the `mezon.api` and `mezon.realtime` messages used by the SDK (field numbers mirror the ts-proto generated code in `mezon-light-sdk/src/proto`) |
 
 ## Differences from the TypeScript SDK

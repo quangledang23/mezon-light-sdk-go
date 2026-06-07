@@ -164,17 +164,23 @@ func TestContentBuilderEmpty(t *testing.T) {
 
 func TestContentJSONFieldNames(t *testing.T) {
 	// The wire field names the Mezon clients expect: "channelId" (camelCase)
-	// for hashtags, "emojiid" (lowercase) for emojis.
+	// for hashtags, "emojiid" (lowercase) for emojis, abbreviated names for
+	// images.
 	data, err := json.Marshal(&MessageContent{
 		T:  "x",
 		Mk: []*MessageMarkup{{Type: MarkupTypeLink, E: 1}},
 		Hg: []*MessageHashtag{{ChannelID: "1", E: 1}},
 		Ej: []*MessageEmoji{{EmojiID: "2", E: 1}},
+		Images: []*MessageImage{{
+			Filename: "dog.jpg", Size: 5620, URL: "https://cdn.test/dog.jpg",
+			Filetype: "image/jpeg", Width: 275, Height: 183,
+		}},
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := `{"t":"x","mk":[{"type":"lk","e":1}],"hg":[{"channelId":"1","e":1}],"ej":[{"emojiid":"2","e":1}]}`
+	want := `{"t":"x","mk":[{"type":"lk","e":1}],"hg":[{"channelId":"1","e":1}],"ej":[{"emojiid":"2","e":1}],` +
+		`"images":[{"fn":"dog.jpg","sz":5620,"url":"https://cdn.test/dog.jpg","ft":"image/jpeg","w":275,"h":183}]}`
 	if string(data) != want {
 		t.Errorf("json = %s, want %s", data, want)
 	}

@@ -49,6 +49,22 @@ type MessageEmoji struct {
 	E       int32  `json:"e,omitempty"`
 }
 
+// MessageImage is one inline image of message content ("images"), as used by
+// webhook payloads; field names are abbreviated on the wire.
+type MessageImage struct {
+	// Filename is the image file name ("fn").
+	Filename string `json:"fn,omitempty"`
+	// Size is the file size in bytes ("sz").
+	Size int32 `json:"sz,omitempty"`
+	// URL is the image URL, e.g. from UploadAttachment.
+	URL string `json:"url"`
+	// Filetype is the MIME type ("ft"), e.g. "image/jpeg".
+	Filetype string `json:"ft,omitempty"`
+	// Width and Height are the image dimensions in pixels ("w"/"h").
+	Width  int32 `json:"w,omitempty"`
+	Height int32 `json:"h,omitempty"`
+}
+
 // MessageContent is the structured content of a channel message, the same
 // shape the Mezon clients and webhooks use ({"t": ..., "mk": [...], ...}).
 type MessageContent struct {
@@ -60,6 +76,8 @@ type MessageContent struct {
 	Hg []*MessageHashtag `json:"hg,omitempty"`
 	// Ej holds custom emoji tokens.
 	Ej []*MessageEmoji `json:"ej,omitempty"`
+	// Images holds inline images (webhook-style payloads).
+	Images []*MessageImage `json:"images,omitempty"`
 }
 
 var linkRegexp = regexp.MustCompile(`https?://\S+`)
@@ -104,6 +122,7 @@ type ContentBuilder struct {
 	mk       []*MessageMarkup
 	hg       []*MessageHashtag
 	ej       []*MessageEmoji
+	images   []*MessageImage
 	mentions []*ApiMessageMention
 }
 
@@ -186,9 +205,16 @@ func (b *ContentBuilder) Emoji(emojiID, display string) *ContentBuilder {
 	return b
 }
 
+// Image attaches an inline image; unlike the other tokens it does not
+// occupy a text range.
+func (b *ContentBuilder) Image(img *MessageImage) *ContentBuilder {
+	b.images = append(b.images, img)
+	return b
+}
+
 // Content returns the assembled message content.
 func (b *ContentBuilder) Content() *MessageContent {
-	return &MessageContent{T: b.sb.String(), Mk: b.mk, Hg: b.hg, Ej: b.ej}
+	return &MessageContent{T: b.sb.String(), Mk: b.mk, Hg: b.hg, Ej: b.ej, Images: b.images}
 }
 
 // Mentions returns the assembled mention entries; they travel next to the
