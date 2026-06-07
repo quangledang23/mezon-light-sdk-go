@@ -174,3 +174,45 @@ func TestDecodeMentions(t *testing.T) {
 		}
 	})
 }
+
+func TestExtractLinks(t *testing.T) {
+	tests := []struct {
+		name string
+		text string
+		want []*MessageMarkup
+	}{
+		{name: "no links", text: "hello world", want: nil},
+		{
+			name: "single link",
+			text: "see https://mezon.ai now",
+			want: []*MessageMarkup{{Type: MarkupTypeLink, S: 4, E: 20}},
+		},
+		{
+			// "xin chào " is 9 characters but 10 bytes; offsets must count
+			// characters.
+			name: "multi-byte text before link",
+			text: "xin chào https://mezon.ai",
+			want: []*MessageMarkup{{Type: MarkupTypeLink, S: 9, E: 25}},
+		},
+		{
+			name: "trailing punctuation excluded",
+			text: "go to https://mezon.ai.",
+			want: []*MessageMarkup{{Type: MarkupTypeLink, S: 6, E: 22}},
+		},
+		{
+			name: "multiple links",
+			text: "https://a.io and http://b.io",
+			want: []*MessageMarkup{
+				{Type: MarkupTypeLink, S: 0, E: 12},
+				{Type: MarkupTypeLink, S: 17, E: 28},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := ExtractLinks(tt.text); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("ExtractLinks(%q) = %+v, want %+v", tt.text, got, tt.want)
+			}
+		})
+	}
+}

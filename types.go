@@ -58,13 +58,51 @@ type SendMessagePayload struct {
 	// ChannelID is the channel to send the message to.
 	ChannelID string
 	// Content is the message content; it is JSON-encoded before sending.
+	// Plain strings and {"t": ...} maps get "lk" markup added automatically
+	// for any URLs so clients render them as clickable links.
 	Content any
 	// Attachments holds optional file/media attachments.
 	Attachments []*ApiMessageAttachment
-	// HideLink hides link previews when true.
+	// HideLink, when true, leaves URLs in the content as plain text instead
+	// of marking them up as clickable links.
 	HideLink bool
 	// Code is the optional message code.
 	Code int32
+}
+
+// Markup types for MessageMarkup.Type.
+const (
+	// MarkupTypeLink renders the covered text as a clickable link.
+	MarkupTypeLink = "lk"
+	// MarkupTypePre renders the covered text as a preformatted block.
+	MarkupTypePre = "pre"
+)
+
+// MessageMarkup is one markup token of message content ("mk"); S and E are
+// character offsets (not bytes) into the content text.
+type MessageMarkup struct {
+	Type string `json:"type"`
+	S    int32  `json:"s,omitempty"`
+	E    int32  `json:"e,omitempty"`
+}
+
+// MessageHashtag is one channel reference of message content ("hg"); S and E
+// are character offsets (not bytes) into the content text.
+type MessageHashtag struct {
+	ChannelID string `json:"channelid"`
+	S         int32  `json:"s,omitempty"`
+	E         int32  `json:"e,omitempty"`
+}
+
+// MessageContent is the structured content of a channel message, the same
+// shape the Mezon clients and webhooks use ({"t": ..., "mk": [...], ...}).
+type MessageContent struct {
+	// T is the message text.
+	T string `json:"t"`
+	// Mk holds markup tokens (links, preformatted blocks, ...).
+	Mk []*MessageMarkup `json:"mk,omitempty"`
+	// Hg holds channel hashtag references.
+	Hg []*MessageHashtag `json:"hg,omitempty"`
 }
 
 // AuthenticateBotConfig configures authentication of a bot (app) using the

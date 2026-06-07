@@ -2,7 +2,9 @@ package mezonlight
 
 import (
 	"encoding/json"
+	"regexp"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/quangledang23/mezon-light-sdk-go/proto"
 )
@@ -87,4 +89,32 @@ func DecodeMentions(data []byte) []*proto.MessageMention {
 		return list.Mentions
 	}
 	return nil
+}
+
+var linkRegexp = regexp.MustCompile(`https?://\S+`)
+
+// ExtractLinks finds http(s) URLs in text and returns "lk" markup tokens for
+// them, which clients render as clickable links. Offsets are characters, not
+// bytes, matching how Mezon clients index content.
+func ExtractLinks(text string) []*MessageMarkup {
+	var marks []*MessageMarkup
+	for _, loc := range linkRegexp.FindAllStringIndex(text, -1) {
+		url := strings.TrimRight(text[loc[0]:loc[1]], `.,;:!?'")]}`)
+		if url == "" {
+			continue
+		}
+		s := utf8.RuneCountInString(text[:loc[0]])
+		marks = append(marks, &MessageMarkup{
+			Type: MarkupTypeLink,
+			S:    int32(s),
+			E:    int32(s + utf8.RuneCountInString(url)),
+		})
+	}
+	return marks
+}
+
+// NewTextContent builds message content from plain text, marking any URLs in
+// it as clickable links.
+func NewTextContent(text string) *MessageContent {
+	return &MessageContent{T: text, Mk: ExtractLinks(text)}
 }
