@@ -34,14 +34,14 @@ import (
 	"context"
 	"log"
 
-	mezonlight "github.com/quangledang23/mezon-light-sdk-go"
+	"github.com/quangledang23/mezon-light-sdk-go"
 )
 
 func main() {
 	ctx := context.Background()
 
 	// Authenticate as a bot with credentials from the Mezon developer portal…
-	client, err := mezonlight.AuthenticateBot(ctx, mezonlight.AuthenticateBotConfig{
+	client, err := mezonlightsdk.AuthenticateBot(ctx, mezonlightsdk.AuthenticateBotConfig{
 		BotID:  "your-bot-id",
 		APIKey: "your-bot-token",
 	})
@@ -50,14 +50,14 @@ func main() {
 	}
 
 	// …or with an ID token from an identity provider:
-	// client, err := mezonlight.Authenticate(ctx, mezonlight.AuthenticateConfig{
+	// client, err := mezonlightsdk.Authenticate(ctx, mezonlightsdk.AuthenticateConfig{
 	// 	IDToken:  "id-token-from-provider",
 	// 	UserID:   "user-123",
 	// 	Username: "johndoe",
 	// })
 
 	// …or restore from previously stored tokens:
-	// client, err := mezonlight.InitClient(mezonlight.ClientInitConfig{
+	// client, err := mezonlightsdk.InitClient(mezonlightsdk.ClientInitConfig{
 	// 	Token:        "your-token",
 	// 	RefreshToken: "your-refresh-token",
 	// 	APIURL:       "https://api.mezon.ai",
@@ -72,8 +72,8 @@ func main() {
 	}
 
 	// Connect the realtime socket.
-	socket := mezonlight.NewLightSocket(client, client.Session())
-	err = socket.Connect(ctx, mezonlight.SocketConnectOptions{
+	socket := mezonlightsdk.NewLightSocket(client, client.Session())
+	err = socket.Connect(ctx, mezonlightsdk.SocketConnectOptions{
 		OnError:      func(err error) { log.Println("socket error:", err) },
 		OnDisconnect: func() { log.Println("disconnected") },
 	})
@@ -83,7 +83,7 @@ func main() {
 	defer socket.Disconnect()
 
 	// Receive messages. The returned function unsubscribes the handler.
-	unsubscribe := socket.OnChannelMessage(func(msg *mezonlight.ChannelMessage) {
+	unsubscribe := socket.OnChannelMessage(func(msg *mezonlightsdk.ChannelMessage) {
 		log.Printf("received from %s: %v", msg.Username, msg.Content)
 	})
 	defer unsubscribe()
@@ -94,7 +94,7 @@ func main() {
 	}
 	// URLs in plain text become clickable links automatically
 	// (set HideLink: true to keep them plain).
-	err = socket.SendDM(ctx, mezonlight.SendMessagePayload{
+	err = socket.SendDM(ctx, mezonlightsdk.SendMessagePayload{
 		ChannelID: channel.ChannelID,
 		Content:   "Hello! Docs: https://mezon.ai/docs/developer",
 	})
@@ -117,7 +117,7 @@ sock, _ := socket.Socket()
 // Channel type 1 = text channel; mode 2 = clan channel message.
 _, err = sock.JoinChat(ctx, clanID, channelID, 1, true)
 ack, err := sock.WriteChatMessage(ctx, clanID, channelID, 2, true,
-	mezonlight.NewTextContent("Hello clan! https://mezon.ai"), nil)
+	mezonlightsdk.NewTextContent("Hello clan! https://mezon.ai"), nil)
 ```
 
 ### Rich content: links, markup, mentions, hashtags, emojis
@@ -129,7 +129,7 @@ are character indices into the text. `ContentBuilder` assembles them so you
 never count offsets by hand:
 
 ```go
-b := mezonlight.NewContentBuilder()
+b := mezonlightsdk.NewContentBuilder()
 b.Text("Deploy xong ").
 	MentionHere().              // "@here", notifies the channel (blue mention)
 	Text(", chi tiết: ").
@@ -140,7 +140,7 @@ b.Text("Deploy xong ").
 	Bold("quan trọng")
 
 ack, err := sock.WriteChatMessage(ctx, clanID, channelID, 2, true,
-	b.Content(), &mezonlight.ChatMessageOptions{
+	b.Content(), &mezonlightsdk.ChatMessageOptions{
 		Mentions:        b.Mentions(),
 		MentionEveryone: true, // makes @here actually notify everyone
 	})
@@ -154,7 +154,7 @@ Also available: `MentionUser(userID, "@alice")`, `MentionRole(roleID,
 e.g. with a URL from `UploadAttachment`):
 
 ```go
-b.Image(&mezonlight.MessageImage{
+b.Image(&mezonlightsdk.MessageImage{
 	Filename: "dog.jpg",
 	URL:      "https://cdn.mezon.vn/.../dog.jpg",
 	Filetype: "image/jpeg",
@@ -164,7 +164,7 @@ b.Image(&mezonlight.MessageImage{
 ```
 
 Note on `@here`: clients render a mention as a blue user mention only when
-its `user_id` is the sentinel `mezonlight.MentionHereUserID`
+its `user_id` is the sentinel `mezonlightsdk.MentionHereUserID`
 (`"1775731111020111321"`, hardcoded in the official clients); a mention
 without a user ID falls into the role-mention path and renders green.
 `MentionHere()` handles this for you.
@@ -176,7 +176,7 @@ Incoming messages arrive decoded: `Content` is the parsed content JSON,
 protobuf or JSON; both are handled):
 
 ```go
-socket.OnChannelMessage(func(msg *mezonlight.ChannelMessage) {
+socket.OnChannelMessage(func(msg *mezonlightsdk.ChannelMessage) {
 	content, _ := msg.Content.(map[string]any)
 	text, _ := content["t"].(string)
 	log.Printf("%s: %s (mentions: %d)", msg.Username, text, len(msg.Mentions))
@@ -186,7 +186,7 @@ socket.OnChannelMessage(func(msg *mezonlight.ChannelMessage) {
 ### Uploading attachments
 
 ```go
-result, err := client.UploadAttachment(ctx, &mezonlight.ApiUploadAttachmentRequest{
+result, err := client.UploadAttachment(ctx, &mezonlightsdk.ApiUploadAttachmentRequest{
 	Filename: "image.png",
 	Filetype: "image/png",
 	Size:     1024,

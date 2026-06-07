@@ -1,4 +1,4 @@
-package mezonlight
+package mezonlightsdk
 
 import (
 	"encoding/json"

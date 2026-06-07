@@ -1,6 +1,6 @@
-// Package mezonlight is a lightweight Go SDK for Mezon chat, ported from the
+// Package mezonlightsdk is a lightweight Go SDK for Mezon chat, ported from the
 // TypeScript package mezon-light-sdk.
-package mezonlight
+package mezonlightsdk
 
 import "time"
 

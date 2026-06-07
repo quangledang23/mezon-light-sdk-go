@@ -1,4 +1,4 @@
-package mezonlight
+package mezonlightsdk
 
 import (
 	"regexp"
@@ -112,10 +112,10 @@ func NewTextContent(text string) *MessageContent {
 // hashtags and emojis, tracking the character offsets of every token so
 // callers never count them by hand:
 //
-//	b := mezonlight.NewContentBuilder()
+//	b := mezonlightsdk.NewContentBuilder()
 //	b.Text("Deploy xong ").MentionHere().Text(", chi tiết: ").Link("https://ci.example.com")
 //	ack, err := sock.WriteChatMessage(ctx, clanID, channelID, 2, true,
-//		b.Content(), &mezonlight.ChatMessageOptions{Mentions: b.Mentions()})
+//		b.Content(), &mezonlightsdk.ChatMessageOptions{Mentions: b.Mentions()})
 type ContentBuilder struct {
 	sb       strings.Builder
 	length   int // characters written, not bytes

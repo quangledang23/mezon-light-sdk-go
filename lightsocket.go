@@ -1,4 +1,4 @@
-package mezonlight
+package mezonlightsdk
 
 import (
 	"context"
@@ -37,19 +37,19 @@ func waitForSocketReady(socket *DefaultSocket, maxRetries int, initialDelay time
 
 // LightSocket provides a simplified interface for Mezon real-time messaging.
 //
-//	socket := mezonlight.NewLightSocket(client, client.Session())
+//	socket := mezonlightsdk.NewLightSocket(client, client.Session())
 //
-//	err := socket.Connect(ctx, mezonlight.SocketConnectOptions{
+//	err := socket.Connect(ctx, mezonlightsdk.SocketConnectOptions{
 //		OnError:      func(err error) { log.Println("socket error:", err) },
 //		OnDisconnect: func() { log.Println("disconnected") },
 //	})
 //
-//	socket.OnChannelMessage(func(msg *mezonlight.ChannelMessage) {
+//	socket.OnChannelMessage(func(msg *mezonlightsdk.ChannelMessage) {
 //		log.Println("received message:", msg.Content)
 //	})
 //
 //	err = socket.JoinDMChannel(ctx, "channel-123")
-//	err = socket.SendDM(ctx, mezonlight.SendMessagePayload{ChannelID: "channel-123", Content: map[string]string{"t": "Hello!"}})
+//	err = socket.SendDM(ctx, mezonlightsdk.SendMessagePayload{ChannelID: "channel-123", Content: map[string]string{"t": "Hello!"}})
 type LightSocket struct {
 	client  *LightClient
 	session *Session
@@ -156,7 +156,7 @@ func (s *LightSocket) Connect(ctx context.Context, options SocketConnectOptions)
 func dispatchMessage(handler ChannelMessageHandler, message *ChannelMessage) {
 	defer func() {
 		if r := recover(); r != nil {
-			log.Printf("mezonlight: panic in message handler: %v", r)
+			log.Printf("mezonlightsdk: panic in message handler: %v", r)
 		}
 	}()
 	handler(message)

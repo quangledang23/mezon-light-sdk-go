@@ -1,4 +1,4 @@
-package mezonlight
+package mezonlightsdk
 
 import (
 	"github.com/quangledang23/mezon-light-sdk-go/proto"

@@ -1,4 +1,4 @@
-package mezonlight
+package mezonlightsdk
 
 import (
 	"context"
@@ -14,7 +14,7 @@ import (
 // channel management.
 //
 //	// Initialize from existing tokens:
-//	client, err := mezonlight.InitClient(mezonlight.ClientInitConfig{
+//	client, err := mezonlightsdk.InitClient(mezonlightsdk.ClientInitConfig{
 //		Token:        "your-token",
 //		RefreshToken: "your-refresh-token",
 //		APIURL:       "https://api.mezon.ai",
@@ -23,7 +23,7 @@ import (
 //	})
 //
 //	// Or authenticate with an ID token:
-//	client, err := mezonlight.Authenticate(ctx, mezonlight.AuthenticateConfig{
+//	client, err := mezonlightsdk.Authenticate(ctx, mezonlightsdk.AuthenticateConfig{
 //		IDToken:  "id-token-from-provider",
 //		UserID:   "user-123",
 //		Username: "johndoe",

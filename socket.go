@@ -1,4 +1,4 @@
-package mezonlight
+package mezonlightsdk
 
 import (
 	"context"
@@ -233,7 +233,7 @@ func (s *DefaultSocket) readLoop(conn *websocket.Conn) {
 		}
 		if s.Verbose {
 			raw, _ := json.Marshal(env)
-			log.Printf("mezonlight: response: %s", raw)
+			log.Printf("mezonlightsdk: response: %s", raw)
 		}
 
 		// Inbound message from the server (no cid).
@@ -243,7 +243,7 @@ func (s *DefaultSocket) readLoop(conn *websocket.Conn) {
 					handler(newChannelMessageFromProto(env.ChannelMessage))
 				}
 			} else if s.Verbose {
-				log.Printf("mezonlight: unrecognized message received: %+v", env)
+				log.Printf("mezonlightsdk: unrecognized message received: %+v", env)
 			}
 			continue
 		}
@@ -254,7 +254,7 @@ func (s *DefaultSocket) readLoop(conn *websocket.Conn) {
 		s.mu.Unlock()
 		if ch == nil {
 			if s.Verbose {
-				log.Printf("mezonlight: no pending request for cid %d", env.Cid)
+				log.Printf("mezonlightsdk: no pending request for cid %d", env.Cid)
 			}
 			continue
 		}
@@ -311,7 +311,7 @@ func (s *DefaultSocket) heartbeatLoop(done chan struct{}) {
 					return
 				}
 				if s.Verbose {
-					log.Println("mezonlight: server unreachable from heartbeat")
+					log.Println("mezonlightsdk: server unreachable from heartbeat")
 				}
 				if s.OnHeartbeatTimeout != nil {
 					s.OnHeartbeatTimeout()
