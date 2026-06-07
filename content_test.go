@@ -19,11 +19,18 @@ func TestExtractLinks(t *testing.T) {
 			want: []*MessageMarkup{{Type: MarkupTypeLink, S: 4, E: 20}},
 		},
 		{
-			// "xin chào " is 9 characters but 10 bytes; offsets must count
-			// characters.
+			// "xin chào " is 9 UTF-16 units but 10 bytes; offsets must count
+			// UTF-16 units.
 			name: "multi-byte text before link",
 			text: "xin chào https://mezon.ai",
 			want: []*MessageMarkup{{Type: MarkupTypeLink, S: 9, E: 25}},
+		},
+		{
+			// "🎉 " is 3 UTF-16 units (the astral emoji takes two) but 2
+			// runes; offsets must match JavaScript's "🎉 ".length === 3.
+			name: "astral emoji before link",
+			text: "🎉 https://mezon.ai",
+			want: []*MessageMarkup{{Type: MarkupTypeLink, S: 3, E: 19}},
 		},
 		{
 			name: "trailing punctuation excluded",
@@ -99,9 +106,30 @@ func TestMessageContent(t *testing.T) {
 	})
 }
 
+func TestContentBuilderUTF16(t *testing.T) {
+	// "🎉 chúc mừng " is 13 UTF-16 units (the astral emoji takes two) but 12
+	// runes and 18 bytes; offsets must match JavaScript string indices.
+	b := NewContentBuilder()
+	b.Text("🎉 chúc mừng ").
+		MentionUser("123", "@alice").
+		Text(" 🚀 ").
+		Bold("xong")
+
+	mentions := b.Mentions()
+	if len(mentions) != 1 || mentions[0].S != 13 || mentions[0].E != 19 {
+		t.Errorf("mention = %+v, want 13..19", mentions[0])
+	}
+
+	// " 🚀 " after "@alice" (ends at 19) is 4 more UTF-16 units.
+	wantMk := []*MessageMarkup{{Type: MarkupTypeBold, S: 23, E: 27}}
+	if got := b.Content().Mk; !reflect.DeepEqual(got, wantMk) {
+		t.Errorf("Mk = %+v, want %+v", got, wantMk)
+	}
+}
+
 func TestContentBuilder(t *testing.T) {
-	// "Chào " is 5 characters but 6 bytes, so every offset after it proves
-	// the builder counts characters, not bytes.
+	// "Chào " is 5 UTF-16 units but 6 bytes, so every offset after it proves
+	// the builder counts UTF-16 units, not bytes.
 	b := NewContentBuilder()
 	b.Text("Chào ").
 		MentionUser("123", "@alice").

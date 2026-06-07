@@ -3,7 +3,6 @@ package mezonlightsdk
 import (
 	"regexp"
 	"strings"
-	"unicode/utf8"
 )
 
 // Markup types for MessageMarkup.Type (EBacktickType in the Mezon web app).
@@ -25,7 +24,8 @@ const (
 )
 
 // MessageMarkup is one markup token of message content ("mk"); S and E are
-// character offsets (not bytes) into the content text.
+// UTF-16 code unit offsets (JavaScript string indices, not bytes) into the
+// content text.
 type MessageMarkup struct {
 	Type string `json:"type"`
 	S    int32  `json:"s,omitempty"`
@@ -33,7 +33,8 @@ type MessageMarkup struct {
 }
 
 // MessageHashtag is one channel reference of message content ("hg"); S and E
-// are character offsets (not bytes) into the content text.
+// are UTF-16 code unit offsets (JavaScript string indices, not bytes) into
+// the content text.
 type MessageHashtag struct {
 	ChannelID string `json:"channelId"`
 	S         int32  `json:"s,omitempty"`
@@ -41,8 +42,8 @@ type MessageHashtag struct {
 }
 
 // MessageEmoji is one custom-emoji token of message content ("ej"); S and E
-// are character offsets (not bytes) into the content text, covering the
-// emoji shortname (e.g. ":smile:").
+// are UTF-16 code unit offsets (JavaScript string indices, not bytes) into
+// the content text, covering the emoji shortname (e.g. ":smile:").
 type MessageEmoji struct {
 	EmojiID string `json:"emojiid"`
 	S       int32  `json:"s,omitempty"`
@@ -82,9 +83,22 @@ type MessageContent struct {
 
 var linkRegexp = regexp.MustCompile(`https?://\S+`)
 
+// utf16Len returns the length of s in UTF-16 code units, which is how the
+// Mezon clients (JavaScript) index message content.
+func utf16Len(s string) int {
+	n := 0
+	for _, r := range s {
+		n++
+		if r > 0xFFFF {
+			n++ // astral characters take two UTF-16 code units
+		}
+	}
+	return n
+}
+
 // ExtractLinks finds http(s) URLs in text and returns "lk" markup tokens for
-// them, which clients render as clickable links. Offsets are characters, not
-// bytes, matching how Mezon clients index content.
+// them, which clients render as clickable links. Offsets are UTF-16 code
+// units, not bytes, matching how Mezon clients index content.
 func ExtractLinks(text string) []*MessageMarkup {
 	var marks []*MessageMarkup
 	for _, loc := range linkRegexp.FindAllStringIndex(text, -1) {
@@ -92,11 +106,11 @@ func ExtractLinks(text string) []*MessageMarkup {
 		if url == "" {
 			continue
 		}
-		s := utf8.RuneCountInString(text[:loc[0]])
+		s := utf16Len(text[:loc[0]])
 		marks = append(marks, &MessageMarkup{
 			Type: MarkupTypeLink,
 			S:    int32(s),
-			E:    int32(s + utf8.RuneCountInString(url)),
+			E:    int32(s + utf16Len(url)),
 		})
 	}
 	return marks
@@ -109,8 +123,8 @@ func NewTextContent(text string) *MessageContent {
 }
 
 // ContentBuilder assembles message content from text, links, code, mentions,
-// hashtags and emojis, tracking the character offsets of every token so
-// callers never count them by hand:
+// hashtags and emojis, tracking the UTF-16 offsets of every token so callers
+// never count them by hand:
 //
 //	b := mezonlightsdk.NewContentBuilder()
 //	b.Text("Deploy xong ").MentionHere().Text(", chi tiết: ").Link("https://ci.example.com")
@@ -118,7 +132,7 @@ func NewTextContent(text string) *MessageContent {
 //		b.Content(), &mezonlightsdk.ChatMessageOptions{Mentions: b.Mentions()})
 type ContentBuilder struct {
 	sb       strings.Builder
-	length   int // characters written, not bytes
+	length   int // UTF-16 code units written, not bytes
 	mk       []*MessageMarkup
 	hg       []*MessageHashtag
 	ej       []*MessageEmoji
@@ -129,11 +143,11 @@ type ContentBuilder struct {
 // NewContentBuilder creates an empty ContentBuilder.
 func NewContentBuilder() *ContentBuilder { return &ContentBuilder{} }
 
-// append writes s to the text and returns its character offsets.
+// append writes s to the text and returns its UTF-16 code unit offsets.
 func (b *ContentBuilder) append(s string) (start, end int32) {
 	start = int32(b.length)
 	b.sb.WriteString(s)
-	b.length += utf8.RuneCountInString(s)
+	b.length += utf16Len(s)
 	return start, int32(b.length)
 }
 

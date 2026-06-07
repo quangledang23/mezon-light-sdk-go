@@ -16,7 +16,7 @@ TypeScript package
   dead-connection detection)
 - Rich message content: clickable links (auto-detected or explicit),
   code/bold markup, user/role/`@here` mentions, channel hashtags and
-  custom emojis via `ContentBuilder` — character offsets handled for you
+  custom emojis via `ContentBuilder` — text offsets handled for you
 - Incoming messages arrive with content, mentions and attachments decoded
 
 ## Installation
@@ -125,8 +125,9 @@ ack, err := sock.WriteChatMessage(ctx, clanID, channelID, 2, true,
 Mezon messages carry plain text (`t`) plus position-based tokens: `mk`
 (markup: links, code, bold), `hg` (channel hashtags) and `ej` (custom
 emojis) inside the content, and a `mentions` array next to it. All offsets
-are character indices into the text. `ContentBuilder` assembles them so you
-never count offsets by hand:
+are UTF-16 code units (JavaScript string indices, as the Mezon clients
+count them — an emoji like 🎉 counts as 2). `ContentBuilder` assembles them
+so you never count offsets by hand:
 
 ```go
 b := mezonlightsdk.NewContentBuilder()
